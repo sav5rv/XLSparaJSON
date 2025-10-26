@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Conversor CSV/XLSX para JSON</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #mensagem { margin-top: 20px; color: green; }
+    button { margin-right: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>Conversor de Planilha para JSON</h2>
+  
+  <input type="file" id="arquivo" accept=".csv,.xls,.xlsx" />
+  
+  <div style="margin-top: 20px;">
+    <button id="btnConverter">Converter</button>
+    <button id="btnAbrir" disabled>Abrir arquivo convertido</button>
+    <button id="btnDownload" disabled>Baixar arquivo convertido</button>
+  </div>
+
+  <div id="mensagem"></div>
+
+  <script>
+    const btnConverter = document.getElementById('btnConverter');
+    const btnAbrir = document.getElementById('btnAbrir');
+    const mensagem = document.getElementById('mensagem');
+    const btnDownload = document.getElementById('btnDownload');
+    let arquivoConvertidoUrl = null;
+
+
+   // Exemplo de como obter o arquivo convertido e criar o Blob (dentro do fetch do botão converter)
+   // arquivoConvertidoUrl = URL.createObjectURL(blob);
+
+    btnDownload.onclick = () => {
+      if (!arquivoConvertidoUrl) return;
+
+      const link = document.createElement('a');
+      link.href = arquivoConvertidoUrl;
+      link.download = 'planilha-xls-convertida.json'; // nome do arquivo para download
+      document.body.appendChild(link);
+      link.click();
+
+      // Depois do download, limpar o URL e remover link do DOM
+      URL.revokeObjectURL(arquivoConvertidoUrl);
+      document.body.removeChild(link);
+      arquivoConvertidoUrl = null; 
+      
+      btnDownload.disabled = true; // desabilita botão até próximo arquivo
+    };
+
+
+    btnConverter.onclick = async () => {
+      const arquivo = document.getElementById('arquivo').files[0];
+      if (!arquivo) {
+        alert('Por favor, selecione um arquivo para converter.');
+        return;
+      }
+
+      mensagem.textContent = 'Convertendo, aguarde...';
+      btnConverter.disabled = true;
+
+      const formData = new FormData();
+      formData.append('arquivo', arquivo);
+
+      try {
+        const response = await fetch('http://localhost:3000/converter', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao converter arquivo');
+        }
+
+        const data = await response.json();
+
+        // Cria arquivo JSON para abrir ou salvar
+        const jsonString = JSON.stringify(data.dados, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        arquivoConvertidoUrl = URL.createObjectURL(blob);
+
+        mensagem.textContent = 'Arquivo convertido com sucesso!';
+        btnAbrir.disabled = false;
+        btnDownload.disabled = false;
+      } catch (error) {
+        mensagem.textContent = 'Erro na conversão do arquivo.';
+        console.error(error);
+      } finally {
+        btnConverter.disabled = false;
+      }
+    };
+
+    btnAbrir.onclick = () => {
+      if (arquivoConvertidoUrl) {
+        window.open(arquivoConvertidoUrl, '_blank');
+      }
+    };
+  </script>
+
+</body>
+</html>
